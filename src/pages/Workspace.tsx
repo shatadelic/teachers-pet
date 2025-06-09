@@ -27,12 +27,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 // Определяем типы для метрик
 type MetricType = 'text' | 'number' | 'select';
 
-interface MetricColumn extends Omit<GridColDef, 'type'> {
-  type: MetricType;
-  valueOptions?: string[];
-  align?: 'left' | 'right' | 'center';
-  headerAlign?: 'left' | 'right' | 'center';
-}
 
 const defaultColumnTypes: Record<string, MetricType> = {
   name: 'text',
@@ -379,6 +373,65 @@ const Workspace = () => {
     setCurrentMetricOptions(prev => prev.filter((_, i) => i !== index));
   };
 
+  const renderColumnHeader = useCallback((
+    params: GridColumnHeaderParams
+  ) => {
+    const field = params.field as string;
+    const currentHeaderName = columnHeaderNames[field] || field;
+    const columnType = columnTypes[field as keyof typeof columnTypes];
+
+    return (
+      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        {editingMetric === field ? (
+          <input
+            autoFocus
+            value={metricHeaderValue}
+            onChange={e => setMetricHeaderValue(e.target.value)}
+            onBlur={handleHeaderInputBlur}
+            onKeyDown={handleHeaderInputKeyDown}
+            style={{ fontSize: 14, width: '90%', padding: 2 }}
+          />
+        ) : (
+          <>
+            <span
+              style={{ cursor: 'pointer', fontWeight: 500, whiteSpace: 'normal', overflowWrap: 'break-word' }}
+              onDoubleClick={() => handleHeaderDoubleClick(field, currentHeaderName)}
+              title="Двойной клик — переименовать колонку"
+            >
+              {currentHeaderName}
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 'auto' }}>
+              {columnType === 'number' && (
+                <FormatListNumberedIcon
+                  fontSize="small"
+                  sx={{ cursor: 'pointer', color: '#b0b0b0', p: 0.2 }}
+                  onClick={e => handleTypeMenuOpen(e as any, field)}
+                  titleAccess="Настроить тип столбца (Число)"
+                />
+              )}
+              {columnType === 'select' && (
+                <ArrowDropDownCircleIcon
+                  fontSize="small"
+                  sx={{ cursor: 'pointer', color: '#b0b0b0', p: 0.2 }}
+                  onClick={e => handleTypeMenuOpen(e as any, field)}
+                  titleAccess="Настроить тип столбца (Выпадающий список)"
+                />
+              )}
+              {columnType === 'text' && (
+                <TextFieldsIcon
+                  fontSize="small"
+                  sx={{ cursor: 'pointer', color: '#b0b0b0', p: 0.2 }}
+                  onClick={e => handleTypeMenuOpen(e as any, field)}
+                  titleAccess="Настроить тип столбца (Текст)"
+                />
+              )}
+            </span>
+          </>
+        )}
+      </span>
+    );
+  }, [editingMetric, metricHeaderValue, columnTypes, columnHeaderNames, handleHeaderDoubleClick, handleHeaderInputBlur, handleHeaderInputKeyDown, handleTypeMenuOpen]);
+
   // В useMemo обновляем определение колонок
   const memoizedColumns = useMemo(() => {
     console.log('Recalculating memoizedColumns...', { columnTypes, metricOptions, columnHeaderNames, columnOrder, columnWidths });
@@ -396,61 +449,7 @@ const Workspace = () => {
         minWidth: 80, // Устанавливаем минимальную ширину ячейки в 80px (около 6-8 символов)
         disableColumnMenu: true,
         sortable: false,
-        renderHeader: () => {
-          const currentHeaderName = columnHeaderNames[field] || field;
-          const columnType = columnTypes[field as keyof typeof columnTypes];
-
-          return (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {editingMetric === field ? (
-                <input
-                  autoFocus
-                  value={metricHeaderValue}
-                  onChange={e => setMetricHeaderValue(e.target.value)}
-                  onBlur={handleHeaderInputBlur}
-                  onKeyDown={handleHeaderInputKeyDown}
-                  style={{ fontSize: 14, width: '90%', padding: 2 }}
-                />
-              ) : (
-                <>
-                  <span
-                    style={{ cursor: 'pointer', fontWeight: 500, whiteSpace: 'normal', overflowWrap: 'break-word' }}
-                    onDoubleClick={() => handleHeaderDoubleClick(field, currentHeaderName)}
-                    title="Двойной клик — переименовать колонку"
-                  >
-                    {currentHeaderName}
-                  </span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', marginLeft: 'auto' }}>
-                    {columnType === 'number' && (
-                      <FormatListNumberedIcon
-                        fontSize="small"
-                        sx={{ cursor: 'pointer', color: '#b0b0b0', p: 0.2 }}
-                        onClick={e => handleTypeMenuOpen(e as any, field)}
-                        titleAccess="Настроить тип столбца (Число)"
-                      />
-                    )}
-                    {columnType === 'select' && (
-                      <ArrowDropDownCircleIcon
-                        fontSize="small"
-                        sx={{ cursor: 'pointer', color: '#b0b0b0', p: 0.2 }}
-                        onClick={e => handleTypeMenuOpen(e as any, field)}
-                        titleAccess="Настроить тип столбца (Выпадающий список)"
-                      />
-                    )}
-                    {columnType === 'text' && (
-                      <TextFieldsIcon
-                        fontSize="small"
-                        sx={{ cursor: 'pointer', color: '#b0b0b0', p: 0.2 }}
-                        onClick={e => handleTypeMenuOpen(e as any, field)}
-                        titleAccess="Настроить тип столбца (Текст)"
-                      />
-                    )}
-                  </span>
-                </>
-              )}
-            </span>
-          );
-        },
+        renderHeader: renderColumnHeader,
       };
 
       // Добавляем тип и valueOptions
@@ -477,7 +476,7 @@ const Workspace = () => {
     });
 
     return columns;
-  }, [editingMetric, metricHeaderValue, columnTypes, metricOptions, columnHeaderNames, handleHeaderDoubleClick, handleTypeMenuOpen, columnOrder, columnWidths]);
+  }, [editingMetric, metricHeaderValue, columnTypes, metricOptions, columnHeaderNames, handleHeaderDoubleClick, handleTypeMenuOpen, columnOrder, columnWidths, renderColumnHeader]);
 
   const handleColumnHeaderClick = (params: GridColumnHeaderParams) => {
     setSelectedColumnField(params.field);
@@ -609,9 +608,9 @@ const Workspace = () => {
     console.log('Column resize event fired:', params);
     setColumnWidths(prev => ({
       ...prev,
-      [params.field]: params.width,
+      [params.colDef.field]: params.width,
     }));
-    console.log('columnWidths after resize:', { ...columnWidths, [params.field]: params.width });
+    console.log('columnWidths after resize:', { ...columnWidths, [params.colDef.field]: params.width });
   };
 
   
