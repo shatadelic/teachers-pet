@@ -23,7 +23,6 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import IconButton from '@mui/material/IconButton';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { analyzeInstructions, generateColumnOptions } from '../services/llmService';
 
 // Определяем типы для метрик
 type MetricType = 'text' | 'number' | 'select';
@@ -615,67 +614,8 @@ const Workspace = () => {
     console.log('columnWidths after resize:', { ...columnWidths, [params.field]: params.width });
   };
 
-  // Функция для генерации столбцов из инструкций с помощью LLM
-  const handleGenerateColumnsFromInstructions = async () => {
-    if (!requirements) {
-      setError('Пожалуйста, введите инструкции перед генерацией столбцов');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Получаем предложения по столбцам от LLM
-      const columnSuggestions = await analyzeInstructions(requirements);
-
-      let currentRows = [...rows];
-      let currentColumnTypes = { ...columnTypes };
-      let currentMetricOptions = { ...metricOptions };
-      let currentColumnOrder = [...columnOrder];
-
-      // Обрабатываем каждое предложение
-      for (const suggestion of columnSuggestions) {
-        const field = suggestion.field;
-        
-        // Проверяем, не существует ли столбец уже
-        if (!currentColumnOrder.includes(field)) {
-          // Добавляем данные в строки
-          currentRows = currentRows.map(row => ({ ...row, [field]: '' }));
-          
-          // Обновляем типы столбцов
-          currentColumnTypes = { ...currentColumnTypes, [field]: suggestion.type };
-          
-          // Если это select, генерируем опции
-          if (suggestion.type === 'select') {
-            const options = await generateColumnOptions(suggestion);
-            currentMetricOptions = { ...currentMetricOptions, [field]: options };
-          } else {
-            currentMetricOptions = { ...currentMetricOptions, [field]: [] };
-          }
-          
-          // Обновляем порядок столбцов
-          currentColumnOrder = [...currentColumnOrder, field];
-          
-          // Обновляем заголовки столбцов
-          columnHeaderNames[field] = suggestion.headerName;
-        }
-      }
-
-      // Применяем все изменения
-      setRows(currentRows);
-      setColumnTypes(currentColumnTypes);
-      setMetricOptions(currentMetricOptions);
-      setColumnOrder(currentColumnOrder);
-
-      setSuccess('Столбцы успешно сгенерированы на основе инструкций!');
-    } catch (err) {
-      setError('Ошибка при генерации столбцов. Пожалуйста, проверьте инструкции и попробуйте снова.');
-      console.error('Error generating columns:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  
+   
 
   return (
     <Box sx={{ flexGrow: 1, mt: 2 }} role="main" aria-label="Рабочее пространство">
@@ -721,15 +661,6 @@ const Workspace = () => {
                   aria-label="Очистить инструкции"
                 >
                   Очистить
-                </Button>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={handleGenerateColumnsFromInstructions}
-                  disabled={isLoading || !requirements} // Отключена, если нет инструкций или идет загрузка
-                  aria-label="Сгенерировать столбцы по инструкциям"
-                >
-                  Сгенерировать столбцы по инструкциям
                 </Button>
               </Stack>
               {fileError && (
